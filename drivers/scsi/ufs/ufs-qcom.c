@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -728,6 +728,11 @@ static int ufs_qcom_config_vreg(struct device *dev,
 
 	reg = vreg->reg;
 	if (regulator_count_voltages(reg) > 0) {
+		uA_load = on ? vreg->max_uA : 0;
+		ret = regulator_set_load(vreg->reg, uA_load);
+		if (ret)
+			goto out;
+
 		min_uV = on ? vreg->min_uV : 0;
 		ret = regulator_set_voltage(reg, min_uV, vreg->max_uV);
 		if (ret) {
@@ -735,11 +740,6 @@ static int ufs_qcom_config_vreg(struct device *dev,
 					__func__, vreg->name, ret);
 			goto out;
 		}
-
-		uA_load = on ? vreg->max_uA : 0;
-		ret = regulator_set_load(vreg->reg, uA_load);
-		if (ret)
-			goto out;
 	}
 out:
 	return ret;
@@ -2838,6 +2838,7 @@ static const struct of_device_id ufs_qcom_of_match[] = {
 	{ .compatible = "qcom,ufshc"},
 	{},
 };
+MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
 
 static const struct dev_pm_ops ufs_qcom_pm_ops = {
 	.suspend	= ufshcd_pltfrm_suspend,

@@ -2215,8 +2215,6 @@ static int icnss_driver_event_fw_ready_ind(void *data)
 
 	set_bit(ICNSS_FW_READY, &penv->state);
 
-	icnss_call_driver_uevent(penv, ICNSS_UEVENT_FW_READY, NULL);
-
 	icnss_pr_info("WLAN FW is ready: 0x%lx\n", penv->state);
 
 	icnss_hw_power_off(penv);
@@ -2974,6 +2972,8 @@ EXPORT_SYMBOL(icnss_disable_irq);
 
 int icnss_get_soc_info(struct device *dev, struct icnss_soc_info *info)
 {
+	char *fw_build_timestamp = NULL;
+
 	if (!penv || !dev) {
 		icnss_pr_err("Platform driver not initialized\n");
 		return -EINVAL;
@@ -2986,6 +2986,8 @@ int icnss_get_soc_info(struct device *dev, struct icnss_soc_info *info)
 	info->board_id = penv->board_info.board_id;
 	info->soc_id = penv->soc_info.soc_id;
 	info->fw_version = penv->fw_version_info.fw_version;
+	fw_build_timestamp = penv->fw_version_info.fw_build_timestamp;
+	fw_build_timestamp[QMI_WLFW_MAX_TIMESTAMP_LEN_V01] = '\0';
 	strlcpy(info->fw_build_timestamp,
 		penv->fw_version_info.fw_build_timestamp,
 		QMI_WLFW_MAX_TIMESTAMP_LEN_V01 + 1);

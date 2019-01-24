@@ -3,7 +3,7 @@
  *
  * This code is based on drivers/scsi/ufs/ufshcd.c
  * Copyright (C) 2011-2013 Samsung India Software Operations
- * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * Authors:
  *	Santosh Yaraganavi <santosh.sy@samsung.com>
@@ -5193,7 +5193,7 @@ static int ufshcd_slave_alloc(struct scsi_device *sdev)
 	/* REPORT SUPPORTED OPERATION CODES is not supported */
 	sdev->no_report_opcodes = 1;
 
-	/* WRITE_SAME command is not supported*/
+	/* WRITE_SAME command is not supported */
 	sdev->no_write_same = 1;
 
 	ufshcd_set_queue_depth(sdev);
@@ -7789,13 +7789,14 @@ static int ufshcd_ioctl(struct scsi_device *dev, int cmd, void __user *buffer)
 	int err = 0;
 
 	BUG_ON(!hba);
-	if (!buffer) {
-		dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
-		return -EINVAL;
-	}
 
 	switch (cmd) {
 	case UFS_IOCTL_QUERY:
+		if (!buffer) {
+			dev_err(hba->dev,
+				"%s: User buffer is NULL!\n", __func__);
+			return -EINVAL;
+		}
 		pm_runtime_get_sync(hba->dev);
 		err = ufshcd_query_ioctl(hba, ufshcd_scsi_to_upiu_lun(dev->lun),
 				buffer);
@@ -7915,13 +7916,21 @@ static int ufshcd_config_vreg(struct device *dev,
 		struct ufs_vreg *vreg, bool on)
 {
 	int ret = 0;
-	struct regulator *reg = vreg->reg;
-	const char *name = vreg->name;
+	struct regulator *reg;
+	const char *name;
 	int min_uV, uA_load;
 
 	BUG_ON(!vreg);
 
+	reg = vreg->reg;
+	name = vreg->name;
+
 	if (regulator_count_voltages(reg) > 0) {
+		uA_load = on ? vreg->max_uA : 0;
+		ret = ufshcd_config_vreg_load(dev, vreg, uA_load);
+		if (ret)
+			goto out;
+
 		min_uV = on ? vreg->min_uV : 0;
 		ret = regulator_set_voltage(reg, min_uV, vreg->max_uV);
 		if (ret) {
@@ -7929,11 +7938,6 @@ static int ufshcd_config_vreg(struct device *dev,
 					__func__, name, ret);
 			goto out;
 		}
-
-		uA_load = on ? vreg->max_uA : 0;
-		ret = ufshcd_config_vreg_load(dev, vreg, uA_load);
-		if (ret)
-			goto out;
 	}
 out:
 	return ret;
